@@ -10,11 +10,11 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { TrendingUp, Users, Clock, Zap } from 'lucide-react';
+import { TrendingUp, Users, Clock, Zap, Activity, Award } from 'lucide-react';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
 import { MetricCard } from '../../components/common/MetricCard';
-import { MOCK_ZONE_BOTTLENECKS } from '../../data/analytics';
+import { MOCK_ZONE_BOTTLENECKS, MOCK_ACTIVITY_LOGS } from '../../data/analytics';
 import { MOCK_EMPLOYEES } from '../../data/employees';
 import {
   TableContainer,
@@ -25,6 +25,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
+import { formatRelativeTime } from '../../lib/formatters';
 
 export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('7d');
@@ -70,6 +71,8 @@ export function AnalyticsPage() {
         actions={
           <div className="flex items-center space-x-1 bg-white p-1 rounded-md border border-border shadow-subtle text-xs">
             <button
+              id="analytics-timerange-today"
+              name="timeRangeToday"
               onClick={() => setTimeRange('today')}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
                 timeRange === 'today'
@@ -80,6 +83,8 @@ export function AnalyticsPage() {
               Today
             </button>
             <button
+              id="analytics-timerange-7d"
+              name="timeRange7d"
               onClick={() => setTimeRange('7d')}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
                 timeRange === '7d'
@@ -90,6 +95,8 @@ export function AnalyticsPage() {
               7 Days
             </button>
             <button
+              id="analytics-timerange-30d"
+              name="timeRange30d"
               onClick={() => setTimeRange('30d')}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
                 timeRange === '30d'
@@ -139,155 +146,200 @@ export function AnalyticsPage() {
         />
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SLA Compliance History */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle>SLA Compliance Trend ({timeRange.toUpperCase()})</CardTitle>
-              <CardDescription>On-time carrier dispatch rate against 92.0% enterprise SLA baseline</CardDescription>
-            </div>
-            <div className="flex items-center space-x-3 text-xs">
-              <span className="flex items-center space-x-1 text-primary-600 font-medium">
-                <span className="h-2 w-2 rounded-full bg-primary-600" />
-                <span>Actual SLA %</span>
+      {/* Dual Column Layout with Independent Scrolling on Desktop, Natural Flow on Mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Side: SLA Compliance Trend Chart & Floor Operator Productivity Matrix */}
+        <div className="lg:col-span-7 space-y-6 lg:overflow-y-auto lg:max-h-[calc(100vh-280px)] lg:pr-2 overscroll-contain">
+          {/* SLA Compliance History */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle>SLA Compliance Trend ({timeRange.toUpperCase()})</CardTitle>
+                <CardDescription>On-time carrier dispatch rate against 92.0% enterprise SLA baseline</CardDescription>
+              </div>
+              <div className="flex items-center space-x-3 text-xs">
+                <span className="flex items-center space-x-1 text-primary-600 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-primary-600" />
+                  <span>Actual SLA %</span>
+                </span>
+                <span className="flex items-center space-x-1 text-gray-400 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-gray-400" />
+                  <span>Target (92%)</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={slaTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F4F7" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
+                    <YAxis domain={[88, 100]} tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '8px',
+                        border: '1px solid #E4E7EC',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Line type="monotone" dataKey="sla" stroke="#4F46E5" strokeWidth={2.5} name="SLA %" />
+                    <Line type="monotone" dataKey="target" stroke="#D0D5DD" strokeDasharray="4 4" strokeWidth={2} name="Target" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Operator Efficiency Leaderboard */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-indigo-600" />
+                  Floor Operator Productivity Matrix
+                </CardTitle>
+                <CardDescription>Picks per hour, accuracy scores, and active zone deployments</CardDescription>
+              </div>
+              <span className="text-[11px] font-mono text-foreground-secondary">
+                Shift: <strong>07:00 - 15:30</strong>
               </span>
-              <span className="flex items-center space-x-1 text-gray-400 font-medium">
-                <span className="h-2 w-2 rounded-full bg-gray-400" />
-                <span>Target (92%)</span>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TableContainer className="border-0 shadow-none">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Zone</TableHead>
+                      <TableHead className="text-right">PPH</TableHead>
+                      <TableHead className="text-right">Accuracy</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {MOCK_EMPLOYEES.map((emp) => (
+                      <TableRow key={emp.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-2.5">
+                            <img
+                              src={emp.avatarUrl}
+                              alt={emp.name}
+                              className="h-6 w-6 rounded-full object-cover border border-border"
+                            />
+                            <div className="font-semibold text-xs text-foreground">{emp.name}</div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-xs text-foreground-secondary">
+                          {emp.role.replace(/_/g, ' ')}
+                        </TableCell>
+
+                        <TableCell className="font-mono text-xs font-semibold">
+                          {emp.currentZone}
+                        </TableCell>
+
+                        <TableCell className="text-right font-mono text-xs font-bold tabular-nums">
+                          {emp.picksPerHour || '-'}
+                        </TableCell>
+
+                        <TableCell className="text-right font-mono text-xs tabular-nums text-emerald-700 font-bold">
+                          {((1 - emp.errorRatePercent) * 100).toFixed(1)}%
+                        </TableCell>
+
+                        <TableCell>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {emp.status.replace(/_/g, ' ')}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Side: Zone Pick Speed Variance, Zone Bottleneck Monitor & Live Facility Telemetry Logs */}
+        <div className="lg:col-span-5 space-y-6 lg:overflow-y-auto lg:max-h-[calc(100vh-280px)] lg:pl-1 overscroll-contain">
+          {/* Zone Pick Speed Variance */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle>Zone Pick Speed (Minutes / Item)</CardTitle>
+                <CardDescription>Zone B heavy displays requires dynamic labor rebalancing</CardDescription>
+              </div>
+              <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                +65% Variance
               </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={slaTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F4F7" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
-                  <YAxis domain={[88, 100]} tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '8px',
-                      border: '1px solid #E4E7EC',
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Line type="monotone" dataKey="sla" stroke="#4F46E5" strokeWidth={2.5} name="SLA %" />
-                  <Line type="monotone" dataKey="target" stroke="#D0D5DD" strokeDasharray="4 4" strokeWidth={2} name="Target" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={MOCK_ZONE_BOTTLENECKS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F4F7" />
+                    <XAxis dataKey="zone" tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '8px',
+                        border: '1px solid #E4E7EC',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Bar dataKey="pickSpeedMinutes" fill="#4F46E5" radius={[4, 4, 0, 0]} name="Avg Pick Mins" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Zone Pick Speed Variance */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle>Zone Pick Speed (Minutes / Line Item)</CardTitle>
-              <CardDescription>Zone B heavy displays requires dynamic labor rebalancing</CardDescription>
-            </div>
-            <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-              Zone B Variance: +65%
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={MOCK_ZONE_BOTTLENECKS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F4F7" />
-                  <XAxis dataKey="zone" tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#667085' }} tickLine={false} axisLine={false} />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '8px',
-                      border: '1px solid #E4E7EC',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Bar dataKey="pickSpeedMinutes" fill="#4F46E5" radius={[4, 4, 0, 0]} name="Avg Pick Mins" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Operator Efficiency Leaderboard */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Warehouse Floor Operator Productivity Matrix</CardTitle>
-            <CardDescription>Picks per hour, accuracy scores, and active zone deployments</CardDescription>
-          </div>
-          <span className="text-xs font-mono text-foreground-secondary">
-            Active Shift: <strong>Day Shift (07:00 - 15:30)</strong>
-          </span>
-        </CardHeader>
-        <CardContent className="p-0">
-          <TableContainer className="border-0 shadow-none">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Assigned Zone</TableHead>
-                  <TableHead>Shift</TableHead>
-                  <TableHead className="text-right">Picks / Hour</TableHead>
-                  <TableHead className="text-right">Accuracy</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_EMPLOYEES.map((emp) => (
-                  <TableRow key={emp.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={emp.avatarUrl}
-                          alt={emp.name}
-                          className="h-7 w-7 rounded-full object-cover border border-border"
-                        />
-                        <div className="font-semibold text-xs text-foreground">{emp.name}</div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="text-xs text-foreground-secondary">
-                      {emp.role.replace(/_/g, ' ')}
-                    </TableCell>
-
-                    <TableCell className="font-mono text-xs font-semibold">
-                      {emp.currentZone}
-                    </TableCell>
-
-                    <TableCell className="text-xs text-foreground-secondary">
-                      {emp.shift}
-                    </TableCell>
-
-                    <TableCell className="text-right font-mono text-xs font-bold tabular-nums">
-                      {emp.picksPerHour || '-'}
-                    </TableCell>
-
-                    <TableCell className="text-right font-mono text-xs tabular-nums text-emerald-700 font-bold">
-                      {((1 - emp.errorRatePercent) * 100).toFixed(1)}%
-                    </TableCell>
-
-                    <TableCell>
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {emp.status.replace(/_/g, ' ')}
+          {/* Live Facility Telemetry & Activity Stream */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-1.5 text-xs font-bold">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                  Live Operational Telemetry Feed
+                </CardTitle>
+                <CardDescription>Real-time stream of sensor pings, picks, and routing decisions</CardDescription>
+              </div>
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-1">
+              <div className="space-y-2">
+                {MOCK_ACTIVITY_LOGS.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-2.5 rounded-lg border border-border bg-[#F8FAFC]/70 space-y-1 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground">{log.title}</span>
+                      <span className="text-[10px] text-foreground-tertiary font-mono">
+                        {formatRelativeTime(log.timestamp)}
                       </span>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <p className="text-[11px] text-foreground-secondary leading-relaxed">
+                      {log.description}
+                    </p>
+                    <div className="flex items-center justify-between text-[10px] text-foreground-tertiary pt-0.5">
+                      <span>Actor: <strong className="text-foreground">{log.actor}</strong></span>
+                      {log.entityId && <span className="font-mono font-bold text-indigo-700">{log.entityId}</span>}
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

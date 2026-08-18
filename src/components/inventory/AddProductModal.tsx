@@ -41,7 +41,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
 
   const binId = `${zone}-${aisle}-${rack}-${shelf}`;
 
-  // Live Calculations
+  // Live Calculations & Validation
   const isSkuTakenLocal = Boolean(
     sku.trim() &&
     inventory.some((item) => item.sku.toLowerCase() === sku.trim().toLowerCase())
@@ -60,17 +60,46 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Auto-generate SKU if not supplied
     const cleanSku = (sku.trim() || `SKU-PROD-${Math.floor(1000 + Math.random() * 9000)}`).toUpperCase();
     const cleanName = productName.trim();
+
+    if (!cleanSku) {
+      setErrorMessage('SKU is required.');
+      return;
+    }
 
     if (!cleanName) {
       setErrorMessage('Product Title is required.');
       return;
     }
 
+    if (!category) {
+      setErrorMessage('Category is required.');
+      return;
+    }
+
+    if (quantityOnHand < 0 || isNaN(quantityOnHand)) {
+      setErrorMessage('Initial On-Hand Quantity must be a valid non-negative number.');
+      return;
+    }
+
+    if (reorderPoint < 0 || isNaN(reorderPoint)) {
+      setErrorMessage('Reorder Point must be a valid non-negative number.');
+      return;
+    }
+
+    if (unitCost < 0 || isNaN(unitCost)) {
+      setErrorMessage('Unit Cost must be a valid number.');
+      return;
+    }
+
+    if (unitPrice < 0 || isNaN(unitPrice)) {
+      setErrorMessage('Unit Price must be a valid number.');
+      return;
+    }
+
     if (isSkuTakenLocal) {
-      setErrorMessage('SKU already exists.');
+      setErrorMessage('SKU already exists. Please use a unique SKU.');
       return;
     }
 
@@ -122,15 +151,15 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
       await addProduct(newProduct, newInventoryItem);
 
       addToast({
-        title: 'Product Created Successfully',
+        title: 'Product added successfully.',
         description: `${cleanSku} (${cleanName}) registered to Bin ${binId} with ${quantityOnHand} units.`,
         type: 'success',
       });
 
       onClose();
     } catch (err: any) {
-      if (err.message === 'SKU already exists.') {
-        setErrorMessage('SKU already exists.');
+      if (err.message && err.message.includes('SKU already exists')) {
+        setErrorMessage('SKU already exists. Please use a unique SKU.');
       } else {
         setErrorMessage(err.message || 'Failed to create product. Entered data has been preserved.');
       }
@@ -165,7 +194,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label htmlFor="product-sku-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                SKU Code <span className="text-[10px] text-foreground-secondary">(auto-generated if empty)</span>
+                SKU Code <span className="text-rose-500">*</span>
               </label>
               <input
                 id="product-sku-input"
@@ -173,19 +202,20 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 type="text"
                 value={sku}
                 placeholder="e.g. SKU-MON-008"
+                required
                 onChange={(e) => {
                   setSku(e.target.value.toUpperCase());
                   setErrorMessage(null);
                 }}
-                className={`w-full h-8 px-2.5 rounded border bg-white font-mono text-xs font-bold ${
-                  errorMessage === 'SKU already exists.' || isSkuTakenLocal
+                className={`w-full h-8 px-2.5 rounded border bg-white font-mono text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                  errorMessage?.includes('SKU already exists') || isSkuTakenLocal
                     ? 'border-rose-500 ring-1 ring-rose-500'
                     : 'border-border'
                 }`}
               />
-              {(errorMessage === 'SKU already exists.' || isSkuTakenLocal) && (
+              {(errorMessage?.includes('SKU already exists') || isSkuTakenLocal) && (
                 <span className="text-[10px] text-rose-600 font-semibold mt-0.5 block">
-                  SKU already exists.
+                  SKU already exists. Please use a unique SKU.
                 </span>
               )}
             </div>
@@ -201,13 +231,13 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 required
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div className="sm:col-span-3">
               <label htmlFor="product-description-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                Description
+                Description / Specifications
               </label>
               <input
                 id="product-description-input"
@@ -215,20 +245,21 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div>
               <label htmlFor="product-category-select" className="text-[11px] font-semibold text-foreground block mb-1">
-                Category
+                Category <span className="text-rose-500">*</span>
               </label>
               <select
                 id="product-category-select"
                 name="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                className="w-full h-8 px-2 rounded border border-border bg-white text-xs"
+                required
+                className="w-full h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <option value="Monitors & Displays">Monitors & Displays</option>
                 <option value="Keyboards & Mice">Keyboards & Mice</option>
@@ -250,7 +281,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 type="text"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
@@ -265,7 +296,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 min={1}
                 value={unitWeightGrams}
                 onChange={(e) => setUnitWeightGrams(Number(e.target.value))}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
           </div>
@@ -280,13 +311,16 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label htmlFor="product-zone-select" className="text-[11px] font-semibold text-foreground block mb-1">Zone</label>
+              <label htmlFor="product-zone-select" className="text-[11px] font-semibold text-foreground block mb-1">
+                Zone <span className="text-rose-500">*</span>
+              </label>
               <select
                 id="product-zone-select"
                 name="zone"
                 value={zone}
                 onChange={(e) => setZone(e.target.value)}
-                className="w-full h-8 px-2 rounded border border-border bg-white text-xs font-semibold"
+                required
+                className="w-full h-8 px-2 rounded border border-border bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <option value="A">Zone A (Fast Electronics)</option>
                 <option value="B">Zone B (Heavy Displays)</option>
@@ -295,41 +329,52 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
               </select>
             </div>
             <div>
-              <label htmlFor="product-aisle-input" className="text-[11px] font-semibold text-foreground block mb-1">Aisle</label>
+              <label htmlFor="product-aisle-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Aisle <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="product-aisle-input"
                 name="aisle"
                 type="text"
                 value={aisle}
                 onChange={(e) => setAisle(e.target.value)}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                required
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
             <div>
-              <label htmlFor="product-rack-input" className="text-[11px] font-semibold text-foreground block mb-1">Rack</label>
+              <label htmlFor="product-rack-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Rack <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="product-rack-input"
                 name="rack"
                 type="text"
                 value={rack}
                 onChange={(e) => setRack(e.target.value)}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                required
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
             <div>
-              <label htmlFor="product-shelf-input" className="text-[11px] font-semibold text-foreground block mb-1">Shelf</label>
+              <label htmlFor="product-shelf-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Shelf <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="product-shelf-input"
                 name="shelf"
                 type="text"
                 value={shelf}
                 onChange={(e) => setShelf(e.target.value)}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                required
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div>
-              <label htmlFor="product-onhand-input" className="text-[11px] font-semibold text-foreground block mb-1">Initial On-Hand</label>
+              <label htmlFor="product-onhand-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Initial On-Hand <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="product-onhand-input"
                 name="quantityOnHand"
@@ -338,12 +383,14 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 value={quantityOnHand}
                 onChange={(e) => setQuantityOnHand(Math.max(0, parseInt(e.target.value) || 0))}
                 required
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono font-bold"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div>
-              <label htmlFor="product-reorder-input" className="text-[11px] font-semibold text-foreground block mb-1">Reorder Point</label>
+              <label htmlFor="product-reorder-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Reorder Point <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="product-reorder-input"
                 name="reorderPoint"
@@ -352,33 +399,39 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
                 value={reorderPoint}
                 onChange={(e) => setReorderPoint(Math.max(0, parseInt(e.target.value) || 0))}
                 required
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div>
-              <label htmlFor="product-unit-cost-input" className="text-[11px] font-semibold text-foreground block mb-1">Unit Cost ($)</label>
+              <label htmlFor="product-unit-cost-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Unit Cost ($)
+              </label>
               <input
                 id="product-unit-cost-input"
                 name="unitCost"
                 type="number"
                 min={0}
+                step="0.01"
                 value={unitCost}
                 onChange={(e) => setUnitCost(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
 
             <div>
-              <label htmlFor="product-unit-price-input" className="text-[11px] font-semibold text-foreground block mb-1">Unit Price ($)</label>
+              <label htmlFor="product-unit-price-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                Unit Price ($)
+              </label>
               <input
                 id="product-unit-price-input"
                 name="unitPrice"
                 type="number"
                 min={0}
+                step="0.01"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               />
             </div>
           </div>

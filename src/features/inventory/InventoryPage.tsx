@@ -95,8 +95,13 @@ export function InventoryPage() {
       {/* Search and Zone Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
+          <label htmlFor="inventory-search-input" className="sr-only">
+            Search Inventory
+          </label>
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-foreground-secondary" />
           <input
+            id="inventory-search-input"
+            name="inventorySearch"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -106,7 +111,12 @@ export function InventoryPage() {
         </div>
 
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <label htmlFor="inventory-zone-select" className="sr-only">
+            Filter by Warehouse Zone
+          </label>
           <select
+            id="inventory-zone-select"
+            name="zoneFilter"
             value={zoneFilter}
             onChange={(e) => setZoneFilter(e.target.value)}
             className="h-9 rounded-md border border-border bg-white px-3 text-xs font-medium text-foreground shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"

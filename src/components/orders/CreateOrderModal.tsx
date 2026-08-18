@@ -54,7 +54,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
   ];
 
   const handleAddItem = () => {
-    const nextSku = availableSkus[items.length % availableSkus.length]?.sku || 'SKU-DKS-003';
+    const nextSku = availableSkus[items.length % availableSkus.length]?.sku || availableSkus[0]?.sku || 'SKU-DKS-003';
     setItems([...items, { sku: nextSku, quantity: 1 }]);
   };
 
@@ -115,6 +115,16 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
     e.preventDefault();
     setErrorMessage(null);
 
+    if (!customerName.trim()) {
+      setErrorMessage('Customer Name is required.');
+      return;
+    }
+
+    if (!customerCompany.trim()) {
+      setErrorMessage('Company Account is required.');
+      return;
+    }
+
     if (items.length === 0) {
       setErrorMessage('Please add at least one line item.');
       return;
@@ -148,8 +158,8 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
         channel: salesChannel,
         customer: {
           id: `cust-${Date.now()}`,
-          name: customerName,
-          company: customerCompany,
+          name: customerName.trim(),
+          company: customerCompany.trim(),
           email: `ops@${customerCompany.toLowerCase().replace(/\s+/g, '')}.com`,
           phone: '+1 (312) 555-0199',
           tier: customerTier,
@@ -196,11 +206,11 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
       // 1. Deduct available stock in inventory store for allocated units
       lineItemDetails.forEach((line) => {
         if (line.allocatedQty > 0) {
-          adjustStockQuantity(line.binId, line.sku, 0); // triggers recount & status update
+          adjustStockQuantity(line.binId, line.sku, 0);
         }
       });
 
-      // 2. If shortage occurred, generate an Operational Exception in exception store
+      // 2. If shortage occurred, generate an Operational Exception
       if (hasShortage) {
         const shortageItem = lineItemDetails.find((i) => i.isShortage);
         const excId = `EXC-${Math.floor(110 + Math.random() * 890)}`;
@@ -242,7 +252,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
       await addOrder(newOrder);
 
       addToast({
-        title: hasShortage ? 'Order Created with Shortage Triage' : 'Order Created & Saved to Cloud',
+        title: 'Order created successfully.',
         description: `${orderId} created for ${customerCompany}. Status: ${finalStatus}.`,
         type: hasShortage ? 'warning' : 'success',
       });
@@ -278,7 +288,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="order-customer-name" className="text-[11px] font-semibold text-foreground block mb-1">Customer Name</label>
+              <label htmlFor="order-customer-name" className="text-[11px] font-semibold text-foreground block mb-1">
+                Customer Name <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="order-customer-name"
                 name="customerName"
@@ -290,7 +302,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
               />
             </div>
             <div>
-              <label htmlFor="order-company-account" className="text-[11px] font-semibold text-foreground block mb-1">Company Account</label>
+              <label htmlFor="order-company-account" className="text-[11px] font-semibold text-foreground block mb-1">
+                Company Account <span className="text-rose-500">*</span>
+              </label>
               <input
                 id="order-company-account"
                 name="customerCompany"
@@ -302,7 +316,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
               />
             </div>
             <div>
-              <label htmlFor="order-customer-tier" className="text-[11px] font-semibold text-foreground block mb-1">Customer Contract Tier</label>
+              <label htmlFor="order-customer-tier" className="text-[11px] font-semibold text-foreground block mb-1">
+                Customer Contract Tier
+              </label>
               <select
                 id="order-customer-tier"
                 name="customerTier"
@@ -316,7 +332,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
               </select>
             </div>
             <div>
-              <label htmlFor="order-sales-channel" className="text-[11px] font-semibold text-foreground block mb-1">Sales Channel</label>
+              <label htmlFor="order-sales-channel" className="text-[11px] font-semibold text-foreground block mb-1">
+                Sales Channel
+              </label>
               <select
                 id="order-sales-channel"
                 name="salesChannel"
@@ -409,7 +427,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs"
+              className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             />
           </div>
         </div>
@@ -434,17 +452,24 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
             {items.map((line, idx) => {
               const details = lineItemDetails[idx];
+              const skuId = `order-item-sku-${idx}`;
+              const qtyId = `order-item-qty-${idx}`;
+
               return (
                 <div
                   key={idx}
                   className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-white shadow-xs"
                 >
                   <div className="flex-1">
+                    <label htmlFor={skuId} className="sr-only">
+                      Select SKU for line {idx + 1}
+                    </label>
                     <select
-                      aria-label={`SKU selection for item ${idx + 1}`}
+                      id={skuId}
+                      name={`itemSku_${idx}`}
                       value={line.sku}
                       onChange={(e) => handleUpdateItemSku(idx, e.target.value)}
-                      className="w-full h-7 px-2 rounded border border-border bg-white text-xs font-mono font-semibold"
+                      className="w-full h-7 px-2 rounded border border-border bg-white text-xs font-mono font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     >
                       {availableSkus.map((p) => (
                         <option key={p.sku} value={p.sku}>
@@ -458,13 +483,17 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                   </div>
 
                   <div className="w-24">
+                    <label htmlFor={qtyId} className="sr-only">
+                      Quantity for line {idx + 1}
+                    </label>
                     <input
-                      aria-label={`Quantity for item ${idx + 1}`}
+                      id={qtyId}
+                      name={`itemQty_${idx}`}
                       type="number"
                       min={1}
                       value={line.quantity}
                       onChange={(e) => handleUpdateItemQty(idx, parseInt(e.target.value) || 1)}
-                      className="w-full h-7 px-2 text-center rounded border border-border bg-white text-xs font-mono font-bold"
+                      className="w-full h-7 px-2 text-center rounded border border-border bg-white text-xs font-mono font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     />
                   </div>
 
@@ -473,7 +502,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                       type="button"
                       onClick={() => handleRemoveItem(idx)}
                       className="p-1 rounded text-rose-600 hover:bg-rose-50 transition-colors"
-                      aria-label="Remove item"
+                      aria-label={`Remove line item ${idx + 1}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

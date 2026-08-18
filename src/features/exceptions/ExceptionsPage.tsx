@@ -131,6 +131,8 @@ export function ExceptionsPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <select
+              id="exceptions-status-filter"
+              name="statusFilter"
               aria-label="Filter by exception status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -144,6 +146,8 @@ export function ExceptionsPage() {
             </select>
 
             <select
+              id="exceptions-severity-filter"
+              name="severityFilter"
               aria-label="Filter by exception severity"
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value as any)}

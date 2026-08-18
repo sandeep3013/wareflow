@@ -6,17 +6,29 @@ import {
   limit,
   query,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureFirebaseSession } from '../lib/firebase';
 import { MOCK_INVENTORY } from '../data/inventory';
 import { MOCK_PRODUCTS } from '../data/products';
 import { MOCK_ORDERS } from '../data/orders';
 import { MOCK_EXCEPTIONS } from '../data/exceptions';
 import { DEFAULT_SETTINGS } from '../types/settings';
 
+let isSeedingInProgress = false;
+
 export async function seedFirestoreIfEmpty(): Promise<boolean> {
-  if (!db) return false;
+  // 1. Ensure authenticated session is active first
+  await ensureFirebaseSession();
+  if (!db) {
+    return false;
+  }
+
+  if (isSeedingInProgress) {
+    return false;
+  }
 
   try {
+    isSeedingInProgress = true;
+
     // Check if inventory collection has any documents
     const invRef = collection(db, 'inventory');
     const invSnap = await getDocs(query(invRef, limit(1)));
@@ -61,7 +73,10 @@ export async function seedFirestoreIfEmpty(): Promise<boolean> {
     console.info('[WAREFLOW Seeder] Successfully seeded initial warehouse data into Firestore.');
     return true;
   } catch (err) {
-    console.warn('[WAREFLOW Seeder] Notice during data check/seeding:', err);
+    console.error('[WAREFLOW Firebase] Notice during data check/seeding:', err);
     return false;
+  } finally {
+    isSeedingInProgress = false;
   }
 }
+

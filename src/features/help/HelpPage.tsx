@@ -155,8 +155,13 @@ export function HelpPage() {
           </p>
         </div>
         <div className="relative max-w-lg">
+          <label htmlFor="help-search-input" className="sr-only">
+            Search Help Documentation
+          </label>
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
+            id="help-search-input"
+            name="helpSearch"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -267,24 +272,32 @@ export function HelpPage() {
       >
         <form onSubmit={handleSupportSubmit} className="space-y-3 text-xs">
           <div>
-            <label className="text-[11px] font-semibold text-foreground block mb-1">Issue Subject</label>
+            <label htmlFor="support-ticket-subject" className="text-[11px] font-semibold text-foreground block mb-1">
+              Issue Subject
+            </label>
             <input
+              id="support-ticket-subject"
+              name="ticketSubject"
               type="text"
               value={ticketSubject}
               onChange={(e) => setTicketSubject(e.target.value)}
               placeholder="e.g. Zebra ZT411 thermal label printer offline in Station P1"
               required
-              className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs"
+              className="w-full h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             />
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-foreground block mb-1">Detailed Description</label>
+            <label htmlFor="support-ticket-message" className="text-[11px] font-semibold text-foreground block mb-1">
+              Detailed Description
+            </label>
             <textarea
+              id="support-ticket-message"
+              name="ticketMessage"
               value={ticketMessage}
               onChange={(e) => setTicketMessage(e.target.value)}
               placeholder="Provide steps to reproduce or affected bin / station IDs..."
               required
-              className="w-full h-20 p-2 rounded border border-border bg-white text-xs"
+              className="w-full h-20 p-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             />
           </div>
           <div className="pt-2 flex justify-end space-x-2">

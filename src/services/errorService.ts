@@ -5,7 +5,6 @@ export interface AppError {
 }
 
 export function handleFirebaseError(error: unknown, context: string): AppError {
-  const isDev = import.meta.env.DEV;
   let userMessage = `Live data temporarily unavailable for ${context}. Showing demo data.`;
   let code = 'unknown';
 
@@ -26,9 +25,7 @@ export function handleFirebaseError(error: unknown, context: string): AppError {
     }
   }
 
-  if (isDev) {
-    console.debug(`[WAREFLOW ${context} Notice] [${code}]:`, error);
-  }
+  console.error(`[WAREFLOW Firebase] [${context}] [${code}]:`, error);
 
   return {
     message: userMessage,

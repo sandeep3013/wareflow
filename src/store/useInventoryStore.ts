@@ -25,6 +25,7 @@ interface InventoryState {
   setCategoryFilter: (category: string | 'ALL') => void;
   adjustStockQuantity: (binId: string, sku: string, deltaOnHand: number) => Promise<void>;
   addProduct: (product: Product, inventoryItem: InventoryItem) => Promise<void>;
+  deleteInventoryItem: (itemId: string, sku: string) => Promise<void>;
   transferStock: (sku: string, fromBinId: string, toBinId: string, quantity: number) => Promise<void>;
   markDamaged: (binId: string, sku: string, quantity: number) => Promise<void>;
   resetInventory: () => Promise<void>;
@@ -51,18 +52,18 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // 1. Initial fetch
+      // 1. Initial fetch from Firestore / fallback
       const [items, prods] = await Promise.all([
         inventoryService.getInventory(),
         inventoryService.getProducts(),
       ]);
-      set({ inventory: items, products: prods, isLoading: false });
+      set({ inventory: items, products: prods, isLoading: false, error: null });
 
       // 2. Real-time subscription
       isInventorySubscribed = true;
       inventoryService.subscribeInventory(
         (updatedItems) => {
-          set({ inventory: updatedItems });
+          set({ inventory: updatedItems, error: null });
         },
         (appErr) => {
           set({ error: appErr.message });
@@ -118,6 +119,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set((state) => ({
       products: [product, ...state.products.filter((p) => p.sku !== product.sku)],
       inventory: [inventoryItem, ...state.inventory.filter((i) => i.id !== inventoryItem.id)],
+    }));
+  },
+
+  deleteInventoryItem: async (itemId, sku) => {
+    await inventoryService.deleteInventoryItem(itemId, sku);
+    set((state) => ({
+      inventory: state.inventory.filter((i) => i.id !== itemId),
+      products: state.products.filter((p) => p.sku !== sku),
     }));
   },
 

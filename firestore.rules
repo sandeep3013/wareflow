@@ -8,34 +8,35 @@ service cloud.firestore {
       return val is string && val.size() >= minLen && val.size() <= maxLen;
     }
 
-    // Inventory Collection Rules (Demo/Hackathon Mode)
+    // Inventory Collection Rules (Authenticated anonymous session)
     match /inventory/{itemId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
     // Products Collection Rules
     match /products/{sku} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
     // Orders Collection Rules
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
     // Operational Exceptions Collection Rules
     match /exceptions/{exceptionId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
     // System & Facility Settings Collection Rules
     match /settings/{settingDoc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
-    // Default fallback
+    // Default fallback for authenticated sessions
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
+

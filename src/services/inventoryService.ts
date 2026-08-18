@@ -9,7 +9,7 @@ import {
   query,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureFirebaseSession } from '../lib/firebase';
 import { InventoryItem, InventoryStatus } from '../types/inventory';
 import { Product } from '../types/product';
 import { handleFirebaseError, AppError } from './errorService';
@@ -49,6 +49,7 @@ function setLocalProducts(prods: Product[]) {
 
 export const inventoryService = {
   async getInventory(): Promise<InventoryItem[]> {
+    await ensureFirebaseSession();
     if (!db) return getLocalInventory();
 
     try {
@@ -66,6 +67,7 @@ export const inventoryService = {
   },
 
   async getProducts(): Promise<Product[]> {
+    await ensureFirebaseSession();
     if (!db) return getLocalProducts();
 
     try {
@@ -146,15 +148,18 @@ export const inventoryService = {
   },
 
   async addProduct(product: Product, inventoryItem: InventoryItem): Promise<void> {
+    await ensureFirebaseSession();
+
     // 1. Update local storage first (optimistic resilience)
     const currentProds = getLocalProducts();
     const currentInv = getLocalInventory();
 
-    const isDuplicate = currentProds.some((p) => p.sku.toLowerCase() === product.sku.toLowerCase()) ||
+    const isDuplicate =
+      currentProds.some((p) => p.sku.toLowerCase() === product.sku.toLowerCase()) ||
       currentInv.some((i) => i.sku.toLowerCase() === product.sku.toLowerCase());
 
     if (isDuplicate) {
-      throw new Error('SKU already exists.');
+      throw new Error('SKU already exists. Please use a unique SKU.');
     }
 
     setLocalProducts([product, ...currentProds]);
@@ -166,7 +171,7 @@ export const inventoryService = {
         const prodRef = doc(db, 'products', product.sku);
         const existing = await getDoc(prodRef);
         if (existing.exists()) {
-          throw new Error('SKU already exists.');
+          throw new Error('SKU already exists. Please use a unique SKU.');
         }
 
         const batch = writeBatch(db);
@@ -183,8 +188,30 @@ export const inventoryService = {
 
         await batch.commit();
       } catch (err: any) {
-        if (err.message === 'SKU already exists.') throw err;
+        if (err.message.includes('SKU already exists')) throw err;
         handleFirebaseError(err, 'Add Product Cloud Sync');
+      }
+    }
+  },
+
+  async deleteInventoryItem(itemId: string, sku: string): Promise<void> {
+    await ensureFirebaseSession();
+    const currentInv = getLocalInventory();
+    const currentProds = getLocalProducts();
+
+    setLocalInventory(currentInv.filter((i) => i.id !== itemId));
+    setLocalProducts(currentProds.filter((p) => p.sku !== sku));
+
+    if (db) {
+      try {
+        const batch = writeBatch(db);
+        const invRef = doc(db, 'inventory', itemId);
+        const prodRef = doc(db, 'products', sku);
+        batch.delete(invRef);
+        batch.delete(prodRef);
+        await batch.commit();
+      } catch (err) {
+        handleFirebaseError(err, 'Delete Inventory Cloud Sync');
       }
     }
   },
@@ -195,6 +222,7 @@ export const inventoryService = {
     deltaOnHand: number,
     currentInventory: InventoryItem[]
   ): Promise<void> {
+    await ensureFirebaseSession();
     const item = currentInventory.find((i) => i.location.binId === binId && i.sku === sku);
     if (!item) return;
 
@@ -240,6 +268,7 @@ export const inventoryService = {
     quantity: number,
     currentInventory: InventoryItem[]
   ): Promise<void> {
+    await ensureFirebaseSession();
     const fromItem = currentInventory.find((i) => i.sku === sku && i.location.binId === fromBinId);
     if (!fromItem || fromItem.quantityAvailable < quantity) {
       throw new Error(`Insufficient available quantity (${fromItem?.quantityAvailable || 0}) for transfer.`);
@@ -316,6 +345,7 @@ export const inventoryService = {
     quantity: number,
     currentInventory: InventoryItem[]
   ): Promise<void> {
+    await ensureFirebaseSession();
     const item = currentInventory.find((i) => i.location.binId === binId && i.sku === sku);
     if (!item) return;
 
@@ -343,6 +373,7 @@ export const inventoryService = {
   },
 
   async resetInventory(): Promise<void> {
+    await ensureFirebaseSession();
     setLocalInventory(MOCK_INVENTORY);
     setLocalProducts(MOCK_PRODUCTS);
 

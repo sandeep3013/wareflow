@@ -133,8 +133,13 @@ export function GlobalSearchModal() {
       <div className="-m-6">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 border-b border-border bg-surface">
+          <label htmlFor="global-search-modal-input" className="sr-only">
+            Search WAREFLOW Operations
+          </label>
           <Search className="w-4 h-4 text-foreground-secondary shrink-0 mr-2" />
           <input
+            id="global-search-modal-input"
+            name="globalSearchQuery"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -9,7 +9,7 @@ import {
   query,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureFirebaseSession } from '../lib/firebase';
 import { Order, OrderStatus } from '../types/order';
 import { handleFirebaseError, AppError } from './errorService';
 import { MOCK_ORDERS } from '../data/orders';
@@ -32,6 +32,7 @@ function setLocalOrders(orders: Order[]) {
 
 export const orderService = {
   async getOrders(): Promise<Order[]> {
+    await ensureFirebaseSession();
     if (!db) return getLocalOrders();
 
     try {
@@ -79,6 +80,7 @@ export const orderService = {
   },
 
   async createOrder(order: Order): Promise<void> {
+    await ensureFirebaseSession();
     const current = getLocalOrders();
     setLocalOrders([order, ...current.filter((o) => o.id !== order.id)]);
 
@@ -98,6 +100,7 @@ export const orderService = {
     note?: string,
     currentOrders?: Order[]
   ): Promise<void> {
+    await ensureFirebaseSession();
     const orders = currentOrders || getLocalOrders();
     const targetOrder = orders.find((o) => o.id === orderId);
     const now = new Date().toISOString();
@@ -134,6 +137,7 @@ export const orderService = {
     allocations: { sku: string; allocated: number }[],
     currentOrders: Order[]
   ): Promise<void> {
+    await ensureFirebaseSession();
     const targetOrder = currentOrders.find((o) => o.id === orderId);
     if (!targetOrder) return;
 
@@ -161,6 +165,7 @@ export const orderService = {
   },
 
   async resetOrders(): Promise<void> {
+    await ensureFirebaseSession();
     setLocalOrders(MOCK_ORDERS);
 
     if (db) {

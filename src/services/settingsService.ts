@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureFirebaseSession } from '../lib/firebase';
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settings';
 import { handleFirebaseError } from './errorService';
 
@@ -21,6 +21,7 @@ function setLocalSettings(settings: AppSettings) {
 
 export const settingsService = {
   async getSettings(): Promise<AppSettings> {
+    await ensureFirebaseSession();
     if (!db) return getLocalSettings();
 
     try {
@@ -36,6 +37,7 @@ export const settingsService = {
   },
 
   async saveSettings(settings: AppSettings): Promise<void> {
+    await ensureFirebaseSession();
     setLocalSettings(settings);
 
     if (db) {
@@ -49,6 +51,7 @@ export const settingsService = {
   },
 
   async resetSettings(): Promise<void> {
+    await ensureFirebaseSession();
     setLocalSettings(DEFAULT_SETTINGS);
 
     if (db) {

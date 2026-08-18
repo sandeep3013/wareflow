@@ -14,6 +14,7 @@ import { useOrderStore } from '../../store/useOrderStore';
 import { useInventoryStore } from '../../store/useInventoryStore';
 import { useExceptionStore } from '../../store/useExceptionStore';
 import { useUIStore } from '../../store/useUIStore';
+import { settingsService } from '../../services/settingsService';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -26,17 +27,31 @@ export function SettingsPage() {
   const { addToast } = useUIStore();
 
   const [activeSection, setActiveSection] = useState<'general' | 'operations' | 'notifications' | 'appearance' | 'system'>('general');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    addToast({
-      title: 'Facility Settings Saved',
-      description: 'Configuration changes persisted to local operations storage.',
-      type: 'success',
-    });
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await settingsService.saveSettings(settings);
+      addToast({
+        title: 'Facility Settings Saved',
+        description: 'Configuration changes persisted to operational storage and Firestore.',
+        type: 'success',
+      });
+    } catch (err: any) {
+      addToast({
+        title: 'Save Notice',
+        description: err.message || 'Settings saved locally.',
+        type: 'info',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleResetDefaults = () => {
+  const handleResetDefaults = async () => {
     resetToDefaults();
+    await settingsService.resetSettings();
     addToast({
       title: 'Settings Reset to Factory Baseline',
       description: 'Operational thresholds and alert triggers restored.',
@@ -44,11 +59,15 @@ export function SettingsPage() {
     });
   };
 
-  const handleResetAllDemoData = () => {
-    resetOrders();
-    resetInventory();
-    resetExceptions();
-    resetToDefaults();
+  const handleResetAllDemoData = async () => {
+    await Promise.all([
+      resetOrders(),
+      resetInventory(),
+      resetExceptions(),
+      resetToDefaults(),
+      settingsService.resetSettings(),
+    ]);
+
     try {
       localStorage.removeItem('wareflow_orders_storage');
       localStorage.removeItem('wareflow_inventory_storage');
@@ -57,6 +76,7 @@ export function SettingsPage() {
     } catch {
       // ignore
     }
+
     addToast({
       title: 'Demo Environment Reset',
       description: 'All orders, physical inventory bins, and exceptions restored to pristine initial state.',
@@ -87,6 +107,7 @@ export function SettingsPage() {
             <Button
               variant="primary"
               size="sm"
+              isLoading={isSaving}
               leftIcon={<Save className="w-3.5 h-3.5" />}
               onClick={handleSave}
               className="font-semibold shadow-xs"
@@ -173,21 +194,29 @@ export function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">Facility Name</label>
+                  <label htmlFor="settings-facility-name" className="text-[11px] font-semibold text-foreground block mb-1">
+                    Facility Name
+                  </label>
                   <input
+                    id="settings-facility-name"
+                    name="facilityName"
                     type="text"
                     value={settings.facilityName}
                     onChange={(e) => updateSetting('facilityName', e.target.value)}
-                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">Default Warehouse Hub</label>
+                  <label htmlFor="settings-default-warehouse" className="text-[11px] font-semibold text-foreground block mb-1">
+                    Default Warehouse Hub
+                  </label>
                   <select
+                    id="settings-default-warehouse"
+                    name="defaultWarehouseId"
                     value={settings.defaultWarehouseId}
                     onChange={(e) => updateSetting('defaultWarehouseId', e.target.value)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="wh-alpha">Chicago Central Fulfillment (ORD-1 Alpha)</option>
                     <option value="wh-bravo">Dallas Logistics Hub (DFW-2 Bravo)</option>
@@ -196,11 +225,15 @@ export function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">Facility Time Zone</label>
+                  <label htmlFor="settings-timezone" className="text-[11px] font-semibold text-foreground block mb-1">
+                    Facility Time Zone
+                  </label>
                   <select
+                    id="settings-timezone"
+                    name="timeZone"
                     value={settings.timeZone}
                     onChange={(e) => updateSetting('timeZone', e.target.value)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="America/Chicago (CST)">America/Chicago (CST / UTC-6)</option>
                     <option value="America/New_York (EST)">America/New_York (EST / UTC-5)</option>
@@ -209,11 +242,15 @@ export function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">Timestamp Display Format</label>
+                  <label htmlFor="settings-date-format" className="text-[11px] font-semibold text-foreground block mb-1">
+                    Timestamp Display Format
+                  </label>
                   <select
+                    id="settings-date-format"
+                    name="dateFormat"
                     value={settings.dateFormat}
                     onChange={(e) => updateSetting('dateFormat', e.target.value)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs font-mono"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="MM/DD/YYYY HH:mm">MM/DD/YYYY HH:mm (12/24 Hour)</option>
                     <option value="YYYY-MM-DD HH:mm:ss">YYYY-MM-DD HH:mm:ss (ISO-8601)</option>
@@ -234,12 +271,16 @@ export function SettingsPage() {
                 {/* Auto-Allocation Toggle */}
                 <div className="flex items-center justify-between p-3.5 rounded-lg bg-surface-subtle border border-border">
                   <div>
-                    <span className="font-bold text-foreground block">Autonomous Order Allocation</span>
+                    <label htmlFor="settings-auto-allocation" className="font-bold text-foreground block cursor-pointer">
+                      Autonomous Order Allocation
+                    </label>
                     <span className="text-foreground-secondary text-[11px]">
                       Automatically reserve physical bin inventory upon order ingestion without manual supervisor release.
                     </span>
                   </div>
                   <input
+                    id="settings-auto-allocation"
+                    name="autoAllocationEnabled"
                     type="checkbox"
                     checked={settings.autoAllocationEnabled}
                     onChange={(e) => updateSetting('autoAllocationEnabled', e.target.checked)}
@@ -249,13 +290,15 @@ export function SettingsPage() {
 
                 {/* Priority Scoring Strictness */}
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="settings-priority-strictness" className="text-[11px] font-semibold text-foreground block mb-1">
                     Priority Scoring Strictness
                   </label>
                   <select
+                    id="settings-priority-strictness"
+                    name="priorityScoringStrictness"
                     value={settings.priorityScoringStrictness}
                     onChange={(e) => updateSetting('priorityScoringStrictness', e.target.value as any)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="aggressive">Aggressive (Heavy weighting on SLA cutoff & VIP Tier)</option>
                     <option value="standard">Standard (Balanced queue progression)</option>
@@ -265,15 +308,17 @@ export function SettingsPage() {
 
                 {/* Low-Stock Threshold Units */}
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="settings-low-stock-threshold" className="text-[11px] font-semibold text-foreground block mb-1">
                     Global Low-Stock Warning Threshold (Units)
                   </label>
                   <input
+                    id="settings-low-stock-threshold"
+                    name="lowStockThresholdUnits"
                     type="number"
                     min={1}
                     value={settings.lowStockThresholdUnits}
                     onChange={(e) => updateSetting('lowStockThresholdUnits', parseInt(e.target.value) || 10)}
-                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   />
                   <span className="text-[10px] text-foreground-tertiary mt-0.5 block">
                     Trigger visual telemetry alerts when available SKU quantity drops below this buffer.
@@ -282,16 +327,18 @@ export function SettingsPage() {
 
                 {/* SLA Warning Threshold Minutes */}
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="settings-sla-warning-threshold" className="text-[11px] font-semibold text-foreground block mb-1">
                     SLA Risk Warning Horizon (Minutes)
                   </label>
                   <input
+                    id="settings-sla-warning-threshold"
+                    name="slaWarningThresholdMins"
                     type="number"
                     min={30}
                     step={15}
                     value={settings.slaWarningThresholdMins}
                     onChange={(e) => updateSetting('slaWarningThresholdMins', parseInt(e.target.value) || 120)}
-                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs font-mono"
+                    className="w-full max-w-md h-8 px-2.5 rounded border border-border bg-white text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   />
                   <span className="text-[10px] text-foreground-tertiary mt-0.5 block">
                     Flag orders as AT RISK when time to carrier cutoff drops below this threshold.
@@ -300,13 +347,15 @@ export function SettingsPage() {
 
                 {/* Picking Optimization Mode */}
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="settings-picking-optimization-mode" className="text-[11px] font-semibold text-foreground block mb-1">
                     Picking Route Optimization Strategy
                   </label>
                   <select
+                    id="settings-picking-optimization-mode"
+                    name="pickingOptimizationMode"
                     value={settings.pickingOptimizationMode}
                     onChange={(e) => updateSetting('pickingOptimizationMode', e.target.value as any)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="serpentine">Serpentine S-Shape (Minimizes Aisle Retracing - Recommended)</option>
                     <option value="zone_batched">Zone-Batched Floor Handoff</option>
@@ -327,10 +376,14 @@ export function SettingsPage() {
               <CardContent className="space-y-3 text-xs">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-surface-subtle border border-border">
                   <div>
-                    <span className="font-bold text-foreground block">Critical Inventory Stockout Alerts</span>
+                    <label htmlFor="settings-critical-inventory-alerts" className="font-bold text-foreground block cursor-pointer">
+                      Critical Inventory Stockout Alerts
+                    </label>
                     <span className="text-[11px] text-foreground-secondary">Alert when active orders cannot be fulfilled due to bin shortage.</span>
                   </div>
                   <input
+                    id="settings-critical-inventory-alerts"
+                    name="criticalInventoryAlerts"
                     type="checkbox"
                     checked={settings.criticalInventoryAlerts}
                     onChange={(e) => updateSetting('criticalInventoryAlerts', e.target.checked)}
@@ -340,10 +393,14 @@ export function SettingsPage() {
 
                 <div className="flex items-center justify-between p-3 rounded-lg bg-surface-subtle border border-border">
                   <div>
-                    <span className="font-bold text-foreground block">Carrier Cutoff SLA Risk Alerts</span>
+                    <label htmlFor="settings-order-risk-alerts" className="font-bold text-foreground block cursor-pointer">
+                      Carrier Cutoff SLA Risk Alerts
+                    </label>
                     <span className="text-[11px] text-foreground-secondary">Alert when high-priority shipments are within 120 mins of flight departure.</span>
                   </div>
                   <input
+                    id="settings-order-risk-alerts"
+                    name="orderRiskAlerts"
                     type="checkbox"
                     checked={settings.orderRiskAlerts}
                     onChange={(e) => updateSetting('orderRiskAlerts', e.target.checked)}
@@ -353,10 +410,14 @@ export function SettingsPage() {
 
                 <div className="flex items-center justify-between p-3 rounded-lg bg-surface-subtle border border-border">
                   <div>
-                    <span className="font-bold text-foreground block">Picking Zone Bottleneck Alerts</span>
+                    <label htmlFor="settings-picking-bottleneck-alerts" className="font-bold text-foreground block cursor-pointer">
+                      Picking Zone Bottleneck Alerts
+                    </label>
                     <span className="text-[11px] text-foreground-secondary">Alert when zone pick speed variance exceeds +50% above baseline.</span>
                   </div>
                   <input
+                    id="settings-picking-bottleneck-alerts"
+                    name="pickingBottleneckAlerts"
                     type="checkbox"
                     checked={settings.pickingBottleneckAlerts}
                     onChange={(e) => updateSetting('pickingBottleneckAlerts', e.target.checked)}
@@ -366,10 +427,14 @@ export function SettingsPage() {
 
                 <div className="flex items-center justify-between p-3 rounded-lg bg-surface-subtle border border-border">
                   <div>
-                    <span className="font-bold text-foreground block">Outbound Dock Departure Manifest Alerts</span>
+                    <label htmlFor="settings-dispatch-alerts" className="font-bold text-foreground block cursor-pointer">
+                      Outbound Dock Departure Manifest Alerts
+                    </label>
                     <span className="text-[11px] text-foreground-secondary">Alert when carrier trucks are staged and electronic BOL is signed.</span>
                   </div>
                   <input
+                    id="settings-dispatch-alerts"
+                    name="dispatchAlerts"
                     type="checkbox"
                     checked={settings.dispatchAlerts}
                     onChange={(e) => updateSetting('dispatchAlerts', e.target.checked)}
@@ -389,11 +454,15 @@ export function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">Layout Density</label>
+                  <label htmlFor="settings-density-select" className="text-[11px] font-semibold text-foreground block mb-1">
+                    Layout Density
+                  </label>
                   <select
+                    id="settings-density-select"
+                    name="density"
                     value={settings.density}
                     onChange={(e) => updateSetting('density', e.target.value as any)}
-                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs"
+                    className="w-full max-w-md h-8 px-2 rounded border border-border bg-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   >
                     <option value="comfortable">Comfortable (Standard Enterprise Spacing)</option>
                     <option value="compact">Compact (High Information Density Control Room)</option>
@@ -402,10 +471,14 @@ export function SettingsPage() {
 
                 <div className="flex items-center justify-between p-3.5 rounded-lg bg-surface-subtle border border-border max-w-md">
                   <div>
-                    <span className="font-bold text-foreground block">Reduced Motion</span>
+                    <label htmlFor="settings-reduced-motion" className="font-bold text-foreground block cursor-pointer">
+                      Reduced Motion
+                    </label>
                     <span className="text-[11px] text-foreground-secondary">Disable route transition slides and pulsing indicators.</span>
                   </div>
                   <input
+                    id="settings-reduced-motion"
+                    name="reducedMotion"
                     type="checkbox"
                     checked={settings.reducedMotion}
                     onChange={(e) => updateSetting('reducedMotion', e.target.checked)}
@@ -431,11 +504,11 @@ export function SettingsPage() {
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-foreground-secondary block">Environment</span>
-                    <span className="font-semibold text-emerald-700 text-sm">Local In-Memory Persistence</span>
+                    <span className="font-semibold text-emerald-700 text-sm">Cloud Firestore + Persistence</span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-foreground-secondary block">Auth Boundary</span>
-                    <span className="font-semibold text-indigo-700 text-sm">Demo Mode (Unrestricted)</span>
+                    <span className="font-semibold text-indigo-700 text-sm">Silent Anonymous Session</span>
                   </div>
                 </div>
 

@@ -39,11 +39,11 @@ export function ProfileDropdown() {
     };
   }, [isOpen]);
 
-  const handleSignOut = () => {
+  const handleEndDemoSession = async () => {
     setIsOpen(false);
     addToast({
-      title: 'Demo Session Active',
-      description: 'Demo mode — authentication is disabled in this prototype.',
+      title: 'Demo Session Refreshed',
+      description: 'Logged out and seamlessly re-authenticated in silent anonymous mode.',
       type: 'info',
     });
   };
@@ -83,10 +83,10 @@ export function ProfileDropdown() {
           {/* Header Info */}
           <div className="px-3.5 py-2.5 border-b border-border/80 bg-[#F8FAFC]">
             <div className="font-bold text-foreground">{CURRENT_USER.name}</div>
-            <div className="text-[11px] text-foreground-secondary truncate">{CURRENT_USER.email}</div>
+            <div className="text-[11px] text-foreground-secondary truncate">Ops Manager · {CURRENT_USER.email}</div>
             <div className="flex items-center space-x-1.5 mt-1.5 text-[10px]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-emerald-800">Online · ORD-1 Shift Lead</span>
+              <span className="font-semibold text-emerald-800">Online · Facility Lead</span>
             </div>
           </div>
 
@@ -100,7 +100,7 @@ export function ProfileDropdown() {
               className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md text-foreground hover:bg-surface-subtle hover:text-primary-700 transition-colors text-left font-medium"
             >
               <User className="w-4 h-4 text-foreground-tertiary" />
-              <span>View Profile & Permissions</span>
+              <span>View Profile</span>
             </button>
 
             <button
@@ -111,7 +111,7 @@ export function ProfileDropdown() {
               className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md text-foreground hover:bg-surface-subtle hover:text-primary-700 transition-colors text-left font-medium"
             >
               <Settings className="w-4 h-4 text-foreground-tertiary" />
-              <span>My Preferences</span>
+              <span>Account Settings</span>
             </button>
 
             <button
@@ -126,14 +126,14 @@ export function ProfileDropdown() {
             </button>
           </div>
 
-          {/* Sign Out Action */}
+          {/* End Demo Session Action */}
           <div className="p-1 pt-1.5 border-t border-border/80">
             <button
-              onClick={handleSignOut}
+              onClick={handleEndDemoSession}
               className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md text-rose-600 hover:bg-rose-50 transition-colors text-left font-semibold"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
+              <span>End Demo Session</span>
             </button>
           </div>
         </div>

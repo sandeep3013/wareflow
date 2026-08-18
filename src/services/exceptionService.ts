@@ -9,7 +9,7 @@ import {
   query,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureFirebaseSession } from '../lib/firebase';
 import { OperationalException } from '../types/exception';
 import { handleFirebaseError, AppError } from './errorService';
 import { MOCK_EXCEPTIONS } from '../data/exceptions';
@@ -32,6 +32,7 @@ function setLocalExceptions(exceptions: OperationalException[]) {
 
 export const exceptionService = {
   async getExceptions(): Promise<OperationalException[]> {
+    await ensureFirebaseSession();
     if (!db) return getLocalExceptions();
 
     try {
@@ -79,6 +80,7 @@ export const exceptionService = {
   },
 
   async createException(exception: OperationalException): Promise<void> {
+    await ensureFirebaseSession();
     const current = getLocalExceptions();
     setLocalExceptions([exception, ...current.filter((e) => e.id !== exception.id)]);
 
@@ -97,6 +99,7 @@ export const exceptionService = {
     resolutionId: string,
     resolutionNotes?: string
   ): Promise<void> {
+    await ensureFirebaseSession();
     const current = getLocalExceptions();
     const now = new Date().toISOString();
 
@@ -132,6 +135,7 @@ export const exceptionService = {
   },
 
   async resetExceptions(): Promise<void> {
+    await ensureFirebaseSession();
     setLocalExceptions(MOCK_EXCEPTIONS);
 
     if (db) {

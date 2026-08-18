@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers } from 'lucide-react';
-import { initFirebase } from '../../lib/firebase';
+import { Layers, AlertCircle, RefreshCw } from 'lucide-react';
+import { ensureFirebaseSession } from '../../lib/firebase';
 import { seedFirestoreIfEmpty } from '../../services/seedService';
 import { useInventoryStore } from '../../store/useInventoryStore';
 import { useOrderStore } from '../../store/useOrderStore';
@@ -17,75 +17,94 @@ export function SplashScreen({ children }: SplashScreenProps) {
     return !sessionStorage.getItem('wareflow_splash_shown');
   });
   const [progress, setProgress] = useState(15);
-  const [statusText, setStatusText] = useState('Initializing telemetry runtime...');
+  const [statusText, setStatusText] = useState('Initializing Operations Engine...');
+  const [hasError, setHasError] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  useEffect(() => {
-    if (!isVisible) {
-      // Background boot if splash already shown in this tab session
-      (async () => {
-        await initFirebase();
-        await seedFirestoreIfEmpty();
-        useInventoryStore.getState().initInventory();
-        useOrderStore.getState().initOrders();
-        useExceptionStore.getState().initExceptions();
-        useSettingsStore.getState().initSettings();
-      })();
-      return;
-    }
+  const runBootSequence = useCallback(async () => {
+    setHasError(false);
+    setIsRetrying(false);
 
-    let isMounted = true;
+    try {
+      // Step 1: Initializing Operations Engine (15%)
+      setProgress(15);
+      setStatusText('Initializing Operations Engine...');
+      await new Promise((r) => setTimeout(r, 120));
 
-    const bootApp = async () => {
+      // Step 2: Connecting to facility data & Anonymous Authentication (40%)
+      setProgress(40);
+      setStatusText('Connecting to facility data...');
+      await ensureFirebaseSession();
+
+      // Step 3: Verifying operational records & Seed check (65%)
+      setProgress(65);
+      setStatusText('Verifying operational records...');
+      await seedFirestoreIfEmpty();
+
+      // Step 4: Loading warehouse intelligence into reactive stores (90%)
+      setProgress(90);
+      setStatusText('Loading warehouse intelligence...');
+      await Promise.all([
+        useInventoryStore.getState().initInventory(),
+        useOrderStore.getState().initOrders(),
+        useExceptionStore.getState().initExceptions(),
+        useSettingsStore.getState().initSettings(),
+      ]);
+
+      // Step 5: Ready (100%)
+      setProgress(100);
+      setStatusText('Ready.');
+
+      await new Promise((r) => setTimeout(r, 300));
+      sessionStorage.setItem('wareflow_splash_shown', 'true');
+      setIsVisible(false);
+    } catch (err) {
+      console.error('[WAREFLOW Firebase] Boot sequence exception:', err);
+      // Fallback: still initialize local stores so app doesn't freeze
       try {
-        if (isMounted) {
-          setProgress(30);
-          setStatusText('Connecting to Firestore cloud engine...');
-        }
-
-        // 1. Initialize Firebase & Auth
-        await initFirebase();
-
-        if (isMounted) {
-          setProgress(60);
-          setStatusText('Synchronizing facility inventory & order streams...');
-        }
-
-        // 2. Idempotent seed check
-        await seedFirestoreIfEmpty();
-
-        // 3. Initialize Stores
         await Promise.all([
           useInventoryStore.getState().initInventory(),
           useOrderStore.getState().initOrders(),
           useExceptionStore.getState().initExceptions(),
           useSettingsStore.getState().initSettings(),
         ]);
-
-        if (isMounted) {
-          setProgress(95);
-          setStatusText('WAREFLOW v2.4 Intelligent Ops Ready');
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      } catch (err) {
-        console.warn('[WAREFLOW Boot Notice]', err);
-      } finally {
-        if (isMounted) {
-          setProgress(100);
-          setTimeout(() => {
-            sessionStorage.setItem('wareflow_splash_shown', 'true');
-            setIsVisible(false);
-          }, 300);
-        }
+        setProgress(100);
+        setStatusText('Ready.');
+        setTimeout(() => {
+          sessionStorage.setItem('wareflow_splash_shown', 'true');
+          setIsVisible(false);
+        }, 300);
+      } catch {
+        setHasError(true);
       }
-    };
+    }
+  }, []);
 
-    bootApp();
+  useEffect(() => {
+    if (!isVisible) {
+      // Background boot if splash already shown in this tab session
+      (async () => {
+        try {
+          await ensureFirebaseSession();
+          await seedFirestoreIfEmpty();
+          useInventoryStore.getState().initInventory();
+          useOrderStore.getState().initOrders();
+          useExceptionStore.getState().initExceptions();
+          useSettingsStore.getState().initSettings();
+        } catch (e) {
+          console.error('[WAREFLOW Firebase] Background boot notice:', e);
+        }
+      })();
+      return;
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isVisible]);
+    runBootSequence();
+  }, [isVisible, runBootSequence]);
+
+  const handleRetry = () => {
+    setIsRetrying(true);
+    runBootSequence();
+  };
 
   return (
     <>
@@ -117,21 +136,39 @@ export function SplashScreen({ children }: SplashScreenProps) {
                 </p>
               </div>
 
-              {/* Progress Bar & Status Text */}
-              <div className="w-full space-y-2 pt-2">
-                <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700/50">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-indigo-300 rounded-full"
-                    initial={{ width: '15%' }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                  />
+              {hasError ? (
+                /* Error Recovery State */
+                <div className="w-full space-y-3 pt-2">
+                  <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-200 text-xs flex items-center justify-center space-x-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>Unable to connect to operational data</span>
+                  </div>
+                  <button
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                    <span>Retry</span>
+                  </button>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                  <span>{statusText}</span>
-                  <span className="font-bold text-indigo-300">{progress}%</span>
+              ) : (
+                /* Progress Bar & Status Text */
+                <div className="w-full space-y-2 pt-2">
+                  <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700/50">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-indigo-500 to-indigo-300 rounded-full"
+                      initial={{ width: '15%' }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
+                    <span>{statusText}</span>
+                    <span className="font-bold text-indigo-300">{progress}%</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         )}

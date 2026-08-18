@@ -97,8 +97,13 @@ export function OrdersPage() {
       {/* Search and Filters Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
+          <label htmlFor="orders-search-input" className="sr-only">
+            Search Orders
+          </label>
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-foreground-secondary" />
           <input
+            id="orders-search-input"
+            name="orderSearch"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -108,7 +113,12 @@ export function OrdersPage() {
         </div>
 
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <label htmlFor="orders-priority-select" className="sr-only">
+            Filter by Priority
+          </label>
           <select
+            id="orders-priority-select"
+            name="priorityFilter"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value as OrderPriority | 'ALL')}
             className="h-9 rounded-md border border-border bg-white px-3 text-xs font-medium text-foreground shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
