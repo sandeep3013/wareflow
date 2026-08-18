@@ -18,7 +18,7 @@ export function ProfileDropdown() {
   const navigate = useNavigate();
   const { addToast } = useUIStore();
 
-  // Close on outside click
+  // Close on outside click or escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -39,11 +39,11 @@ export function ProfileDropdown() {
     };
   }, [isOpen]);
 
-  const handleEndDemoSession = async () => {
+  const handleSignOut = () => {
     setIsOpen(false);
     addToast({
-      title: 'Demo Session Refreshed',
-      description: 'Logged out and seamlessly re-authenticated in silent anonymous mode.',
+      title: 'Sign Out (Demo Mode)',
+      description: 'Authentication is currently disabled in demo mode.',
       type: 'info',
     });
   };
@@ -52,6 +52,8 @@ export function ProfileDropdown() {
     <div className="relative" ref={dropdownRef}>
       {/* Profile Trigger Button */}
       <button
+        id="profile-dropdown-trigger"
+        name="profileDropdownTrigger"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 pl-2 pr-1.5 py-1 rounded-lg hover:bg-surface-subtle border border-transparent hover:border-border transition-all text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         aria-expanded={isOpen}
@@ -93,6 +95,8 @@ export function ProfileDropdown() {
           {/* Menu Items */}
           <div className="p-1 space-y-0.5">
             <button
+              id="profile-menu-view-profile"
+              name="viewProfile"
               onClick={() => {
                 setIsOpen(false);
                 setIsProfileModalOpen(true);
@@ -100,10 +104,12 @@ export function ProfileDropdown() {
               className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md text-foreground hover:bg-surface-subtle hover:text-primary-700 transition-colors text-left font-medium"
             >
               <User className="w-4 h-4 text-foreground-tertiary" />
-              <span>View Profile</span>
+              <span>Profile</span>
             </button>
 
             <button
+              id="profile-menu-account-settings"
+              name="accountSettings"
               onClick={() => {
                 setIsOpen(false);
                 navigate('/settings');
@@ -115,6 +121,8 @@ export function ProfileDropdown() {
             </button>
 
             <button
+              id="profile-menu-activity-log"
+              name="activityLog"
               onClick={() => {
                 setIsOpen(false);
                 navigate('/analytics');
@@ -126,14 +134,16 @@ export function ProfileDropdown() {
             </button>
           </div>
 
-          {/* End Demo Session Action */}
+          {/* Sign Out Action */}
           <div className="p-1 pt-1.5 border-t border-border/80">
             <button
-              onClick={handleEndDemoSession}
+              id="profile-menu-sign-out"
+              name="signOut"
+              onClick={handleSignOut}
               className="w-full flex items-center space-x-2.5 px-2.5 py-2 rounded-md text-rose-600 hover:bg-rose-50 transition-colors text-left font-semibold"
             >
               <LogOut className="w-4 h-4" />
-              <span>End Demo Session</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

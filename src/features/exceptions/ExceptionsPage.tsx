@@ -76,7 +76,7 @@ export function ExceptionsPage() {
 
       addToast({
         title: 'Resolution Approved & Saved',
-        description: `Executed: "${chosen?.actionTitle}". Operational state synchronized.`,
+        description: `Executed: "${chosen?.actionTitle}". Operational state synchronized in Firestore.`,
         type: 'success',
       });
     } catch (err: any) {
@@ -174,7 +174,7 @@ export function ExceptionsPage() {
               Detected Operational Exceptions ({filteredExceptions.length})
             </h3>
 
-            <div className="space-y-2.5 lg:max-h-[calc(100dvh-280px)] lg:overflow-y-auto lg:pr-1">
+            <div className="space-y-2.5 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto lg:pr-1.5 overscroll-contain">
               {filteredExceptions.length === 0 ? (
                 <div className="p-8 text-center bg-white rounded-lg border border-border text-xs text-foreground-secondary">
                   No exceptions matching the current filter criteria.
@@ -239,7 +239,7 @@ export function ExceptionsPage() {
           </div>
 
           {/* Right Column: Independent Scroll Container on Desktop, normal flow on mobile */}
-          <div className="lg:col-span-7 lg:max-h-[calc(100dvh-280px)] lg:overflow-y-auto lg:pr-1">
+          <div className="lg:col-span-7 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto lg:pr-1.5 overscroll-contain">
             {selectedException ? (
               <Card className="p-6 space-y-6 bg-white shadow-card">
                 {/* Header */}

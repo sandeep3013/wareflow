@@ -16,7 +16,6 @@ import { DEFAULT_SETTINGS } from '../types/settings';
 let isSeedingInProgress = false;
 
 export async function seedFirestoreIfEmpty(): Promise<boolean> {
-  // 1. Ensure authenticated session is active first
   await ensureFirebaseSession();
   if (!db) {
     return false;
@@ -29,11 +28,11 @@ export async function seedFirestoreIfEmpty(): Promise<boolean> {
   try {
     isSeedingInProgress = true;
 
-    // Check if inventory collection has any documents
-    const invRef = collection(db, 'inventory');
-    const invSnap = await getDocs(query(invRef, limit(1)));
+    // Check if products collection has any documents
+    const prodRef = collection(db, 'products');
+    const prodSnap = await getDocs(query(prodRef, limit(1)));
 
-    if (!invSnap.empty) {
+    if (!prodSnap.empty) {
       // Data is already seeded; avoid re-seeding
       return false;
     }
@@ -79,4 +78,3 @@ export async function seedFirestoreIfEmpty(): Promise<boolean> {
     isSeedingInProgress = false;
   }
 }
-

@@ -6,13 +6,6 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
-import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged,
-  Auth,
-  User,
-} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -34,19 +27,17 @@ export const isFirebaseConfigured = (): boolean => {
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
-let auth: Auth | null = null;
 let isInitialized = false;
-let sessionPromise: Promise<User | null> | null = null;
 
 export const initFirebase = async () => {
-  if (app && db && auth) {
-    return { app, db, auth };
+  if (app && db) {
+    return { app, db };
   }
 
   if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
     console.info('[WAREFLOW Firebase] No Firebase credentials provided. Running in local in-memory fallback mode.');
     isInitialized = true;
-    return { app: null, db: null, auth: null };
+    return { app: null, db: null };
   }
 
   try {
@@ -64,113 +55,28 @@ export const initFirebase = async () => {
       db = getFirestore(app);
     }
 
-    // 3. Initialize Firebase Auth
-    auth = getAuth(app);
     isInitialized = true;
     console.info('[WAREFLOW Firebase] Successfully initialized Firestore for project:', firebaseConfig.projectId);
-    return { app, db, auth };
+    return { app, db };
   } catch (err) {
     console.warn('[WAREFLOW Firebase] Notice (using resilient local mode):', err);
     isInitialized = true;
-    return { app: null, db: null, auth: null };
+    return { app: null, db: null };
   }
 };
 
 /**
- * Ensures a silent, anonymous authenticated Firebase session exists.
- * Resolves with the authenticated User object (or null in offline/mock mode).
+ * Resolves immediately for the current unauthenticated prototype demo session.
  */
-export const ensureFirebaseSession = async (): Promise<User | null> => {
-  if (sessionPromise) return sessionPromise;
-
-  sessionPromise = (async () => {
-    try {
-      const { auth: firebaseAuth } = await initFirebase();
-      if (!firebaseAuth) {
-        return null;
-      }
-
-      // If user already exists in current session, return immediately
-      if (firebaseAuth.currentUser) {
-        return firebaseAuth.currentUser;
-      }
-
-      // Wait for existing auth state listener or sign in anonymously silently
-      const user = await new Promise<User | null>((resolve) => {
-        let isResolved = false;
-        let unsubscribe: (() => void) | null = null;
-
-        const timer = setTimeout(async () => {
-          if (isResolved) return;
-          if (unsubscribe) unsubscribe();
-          try {
-            const cred = await signInAnonymously(firebaseAuth);
-            isResolved = true;
-            resolve(cred.user);
-          } catch (err) {
-            console.error('[WAREFLOW Firebase] Anonymous sign-in timeout fallback failed:', err);
-            isResolved = true;
-            resolve(null);
-          }
-        }, 3500);
-
-        unsubscribe = onAuthStateChanged(
-          firebaseAuth,
-          async (currentUser) => {
-            if (isResolved) return;
-            if (currentUser) {
-              clearTimeout(timer);
-              isResolved = true;
-              if (unsubscribe) unsubscribe();
-              resolve(currentUser);
-            } else {
-              try {
-                const cred = await signInAnonymously(firebaseAuth);
-                clearTimeout(timer);
-                isResolved = true;
-                if (unsubscribe) unsubscribe();
-                resolve(cred.user);
-              } catch (err) {
-                clearTimeout(timer);
-                isResolved = true;
-                if (unsubscribe) unsubscribe();
-                console.error('[WAREFLOW Firebase] Silent anonymous authentication failed:', err);
-                resolve(null);
-              }
-            }
-          },
-          (err) => {
-            clearTimeout(timer);
-            if (isResolved) return;
-            isResolved = true;
-            if (unsubscribe) unsubscribe();
-            console.error('[WAREFLOW Firebase] Auth state observer error:', err);
-            resolve(null);
-          }
-        );
-      });
-
-      return user;
-    } catch (err) {
-      console.error('[WAREFLOW Firebase] Session creation error:', err);
-      return null;
-    }
-  })();
-
-  return sessionPromise;
+export const ensureFirebaseSession = async (): Promise<null> => {
+  if (!isInitialized) {
+    await initFirebase();
+  }
+  return null;
 };
 
 export const resetFirebaseSession = async (): Promise<void> => {
-  sessionPromise = null;
-  if (auth && auth.currentUser) {
-    try {
-      await auth.signOut();
-    } catch {
-      // ignore
-    }
-  }
-  await ensureFirebaseSession();
+  // Demo mode session refresh
 };
 
-export { app, db, auth, isInitialized };
-
+export { app, db, isInitialized };
