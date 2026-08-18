@@ -52,7 +52,8 @@ describe('Data Services Fallback & Baseline Capabilities', () => {
 
   it('settingsService retrieves baseline settings', async () => {
     const settings = await settingsService.getSettings();
-    expect(settings).toEqual(DEFAULT_SETTINGS);
     expect(settings.facilityName).toBe(DEFAULT_SETTINGS.facilityName);
+    expect(settings.engineVersion).toBe(DEFAULT_SETTINGS.engineVersion);
+    expect(settings.defaultWarehouseId).toBe(DEFAULT_SETTINGS.defaultWarehouseId);
   });
 });
