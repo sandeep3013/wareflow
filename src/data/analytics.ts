@@ -1,0 +1,223 @@
+import {
+  ActivityLogItem,
+  NotificationItem,
+  OperationalKPIs,
+  StatusDistributionPoint,
+  ThroughputHourlyPoint,
+  ZoneBottleneckMetrics,
+} from '../types/analytics';
+
+export const MOCK_KPIS: OperationalKPIs = {
+  totalOrders: 248,
+  totalOrdersTrend: +12.4, // +12.4% vs yesterday
+  totalInventoryUnits: 12482,
+  totalInventorySKUs: 30,
+  ordersAtRiskCount: 17,
+  ordersAtRiskTrend: -4.2, // decreased risk by 4.2%
+  slaComplianceRate: 94.2,
+  slaComplianceTrend: +1.8,
+  activeExceptionsCount: 7,
+  avgOrderFulfillmentMins: 42.5,
+};
+
+export const MOCK_HOURLY_THROUGHPUT: ThroughputHourlyPoint[] = [
+  { time: '06:00', pickedUnits: 45, packedUnits: 30, dispatchedUnits: 20, targetUnits: 40 },
+  { time: '07:00', pickedUnits: 88, packedUnits: 65, dispatchedUnits: 40, targetUnits: 75 },
+  { time: '08:00', pickedUnits: 124, packedUnits: 98, dispatchedUnits: 80, targetUnits: 100 },
+  { time: '09:00', pickedUnits: 156, packedUnits: 140, dispatchedUnits: 115, targetUnits: 120 },
+  { time: '10:00', pickedUnits: 142, packedUnits: 135, dispatchedUnits: 120, targetUnits: 120 },
+  { time: '11:00', pickedUnits: 168, packedUnits: 152, dispatchedUnits: 145, targetUnits: 130 },
+  { time: '12:00', pickedUnits: 110, packedUnits: 105, dispatchedUnits: 95, targetUnits: 100 },
+  { time: '13:00', pickedUnits: 175, packedUnits: 162, dispatchedUnits: 150, targetUnits: 140 },
+  { time: '14:00', pickedUnits: 190, packedUnits: 180, dispatchedUnits: 165, targetUnits: 150 },
+  { time: '15:00', pickedUnits: 160, packedUnits: 155, dispatchedUnits: 148, targetUnits: 140 },
+];
+
+export const MOCK_ORDERS_BY_STATUS: StatusDistributionPoint[] = [
+  { name: 'New / Ingested', count: 32, color: '#6B7280' },
+  { name: 'Prioritized', count: 28, color: '#8B5CF6' },
+  { name: 'Allocated', count: 46, color: '#3B82F6' },
+  { name: 'Picking', count: 38, color: '#F59E0B' },
+  { name: 'Packing & QC', count: 34, color: '#EC4899' },
+  { name: 'Ready to Dispatch', count: 24, color: '#10B981' },
+  { name: 'Dispatched', count: 42, color: '#059669' },
+  { name: 'On Hold / Exception', count: 4, color: '#EF4444' },
+];
+
+export const MOCK_ZONE_BOTTLENECKS: ZoneBottleneckMetrics[] = [
+  {
+    zone: 'ZONE_A',
+    name: 'Fast-Pick Small Electronics',
+    utilization: 89,
+    pickSpeedMinutes: 2.1,
+    congestionIndex: 42,
+    activeWorkers: 6,
+    status: 'NORMAL',
+  },
+  {
+    zone: 'ZONE_B',
+    name: 'Heavy Displays & Mounts',
+    utilization: 94,
+    pickSpeedMinutes: 5.8, // 34% slower than expected
+    congestionIndex: 84,
+    activeWorkers: 5,
+    status: 'CRITICAL_BOTTLENECK',
+  },
+  {
+    zone: 'ZONE_C',
+    name: 'Cables & Fast Moving',
+    utilization: 72,
+    pickSpeedMinutes: 1.9,
+    congestionIndex: 31,
+    activeWorkers: 3,
+    status: 'NORMAL',
+  },
+  {
+    zone: 'ZONE_D',
+    name: 'High-Value Audio & Storage',
+    utilization: 78,
+    pickSpeedMinutes: 3.4,
+    congestionIndex: 48,
+    activeWorkers: 2,
+    status: 'ELEVATED',
+  },
+];
+
+export const MOCK_SMART_ACTIONS = [
+  {
+    id: 'act-01',
+    type: 'CRITICAL' as const,
+    title: 'Order #ORD-1042 requires manual inventory allocation',
+    description: 'VIP Same-Day order lacks 3 units of SKU-DKS-003. Algorithm suggests reallocating from low-priority order #ORD-1043.',
+    actionLabel: 'Review Allocation',
+    actionHref: '/exceptions',
+    badge: 'Allocation Conflict',
+    entityId: 'ORD-1042',
+    timestamp: '5 mins ago',
+  },
+  {
+    id: 'act-02',
+    type: 'WARNING' as const,
+    title: 'SKU-1045 is below reorder level (14 on-hand vs 30 min)',
+    description: '0.3 days of supply remaining. Automated draft PO ready for supplier approval.',
+    actionLabel: 'View Inventory',
+    actionHref: '/inventory',
+    badge: 'Stock Risk',
+    entityId: 'SKU-1045',
+    timestamp: '15 mins ago',
+  },
+  {
+    id: 'act-03',
+    type: 'BOTTLENECK' as const,
+    title: 'Zone B picking time is 34% above average',
+    description: 'Aisle 06 congestion detected. Rebalance 2 operators from Zone A to relieve queue.',
+    actionLabel: 'Rebalance Staff',
+    actionHref: '/analytics',
+    badge: 'Zone Congestion',
+    entityId: 'ZONE_B',
+    timestamp: '25 mins ago',
+  },
+  {
+    id: 'act-04',
+    type: 'INFO' as const,
+    title: '12 orders are ready for dispatch at Dock 03',
+    description: 'FedEx Priority carrier manifest compiled and ready for driver digital signature.',
+    actionLabel: 'View Manifest',
+    actionHref: '/dispatch',
+    badge: 'Outbound Ready',
+    entityId: 'DSP-MANIFEST-04',
+    timestamp: '40 mins ago',
+  },
+];
+
+export const MOCK_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'notif-1',
+    title: 'Critical Stock Shortage: ORD-1042',
+    message: 'Action needed to prevent SLA breach on VIP account Apex Logistics.',
+    type: 'CRITICAL',
+    timestamp: '2025-02-18T06:20:00Z',
+    read: false,
+    actionHref: '/exceptions',
+  },
+  {
+    id: 'notif-2',
+    title: 'Zone B Bottleneck Alert',
+    message: 'Congestion score exceeded 80 in heavy displays aisle 06.',
+    type: 'BOTTLENECK',
+    timestamp: '2025-02-18T06:00:00Z',
+    read: false,
+    actionHref: '/analytics',
+  },
+  {
+    id: 'notif-3',
+    title: 'Reorder Level Warning: SKU-1045',
+    message: 'Current stock is below safety buffer (14 units remaining).',
+    type: 'WARNING',
+    timestamp: '2025-02-18T05:45:00Z',
+    read: true,
+    actionHref: '/inventory',
+  },
+  {
+    id: 'notif-4',
+    title: '12 Orders Staged for FedEx Flight Cutoff',
+    message: 'Carrier manifest generated for Dock 03.',
+    type: 'INFO',
+    timestamp: '2025-02-18T05:50:00Z',
+    read: true,
+    actionHref: '/dispatch',
+  },
+];
+
+export const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
+  {
+    id: 'act-log-1',
+    type: 'EXCEPTION_FILED',
+    title: 'Stock Shortage Flagged',
+    description: 'Auto-allocation flagged 3-unit shortfall on SKU-DKS-003 for ORD-1042.',
+    timestamp: '2025-02-18T06:20:00Z',
+    actor: 'Auto-Allocation Engine',
+    entityId: 'ORD-1042',
+    severity: 'CRITICAL',
+  },
+  {
+    id: 'act-log-2',
+    type: 'ORDER_STATUS',
+    title: 'Order Status Changed: PICKING',
+    description: 'Darius Thorne started picking Wave #8831 for ORD-1044.',
+    timestamp: '2025-02-18T06:10:00Z',
+    actor: 'Darius Thorne',
+    entityId: 'ORD-1044',
+    severity: 'INFO',
+  },
+  {
+    id: 'act-log-3',
+    type: 'ORDER_STATUS',
+    title: 'Order Ready for Dispatch',
+    description: 'ORD-1046 passed quality scale check and moved to Dock 03.',
+    timestamp: '2025-02-18T05:50:00Z',
+    actor: 'Jordan Miller',
+    entityId: 'ORD-1046',
+    severity: 'SUCCESS',
+  },
+  {
+    id: 'act-log-4',
+    type: 'STOCK_ADJUSTMENT',
+    title: 'Damage Written Off to Quarantine',
+    description: '2 units of SKU-MON-004 moved to Zone QRT after pallet inspection.',
+    timestamp: '2025-02-18T04:15:00Z',
+    actor: 'Mateo Hernandez',
+    entityId: 'SKU-MON-004',
+    severity: 'WARNING',
+  },
+  {
+    id: 'act-log-5',
+    type: 'DISPATCH_CONFIRMED',
+    title: 'Express Carrier Departed',
+    description: 'ORD-1048 loaded onto FedEx Priority linehaul (Tracking #FX-992140129).',
+    timestamp: '2025-02-18T04:30:00Z',
+    actor: 'Lucas Kim',
+    entityId: 'ORD-1048',
+    severity: 'SUCCESS',
+  },
+];

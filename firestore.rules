@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for schema validation
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    // Inventory Collection Rules (Demo/Hackathon Mode)
+    match /inventory/{itemId} {
+      allow read, write: if true;
+    }
+
+    // Products Collection Rules
+    match /products/{sku} {
+      allow read, write: if true;
+    }
+
+    // Orders Collection Rules
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Operational Exceptions Collection Rules
+    match /exceptions/{exceptionId} {
+      allow read, write: if true;
+    }
+
+    // System & Facility Settings Collection Rules
+    match /settings/{settingDoc} {
+      allow read, write: if true;
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
